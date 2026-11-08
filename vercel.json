@@ -1,1 +1,1 @@
-{"installCommand": "npm install", "buildCommand": "npx vite build"}
+{"installCommand": "npm install", "buildCommand": "npx vite build", "outputDirectory": "dist/client", "rewrites": [{"source": "/((?!assets/).*)", "destination": "/"}]}
