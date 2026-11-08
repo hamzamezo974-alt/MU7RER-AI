@@ -1,0 +1,1 @@
+import{B as e}from"./index-BPOqwdkZ.js";import{t}from"./ResearchWorkspace-BIYqqQHH.js";import{t as n}from"./jsx-runtime-CldxteV5.js";var r=n(),i=()=>(0,r.jsx)(`div`,{className:`h-full overflow-auto p-4`,children:(0,r.jsx)(e,{children:(0,r.jsx)(t,{})})});export{i as component};

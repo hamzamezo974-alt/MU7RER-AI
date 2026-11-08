@@ -241,7 +241,7 @@ export function exportToCriticalLatex(title: string, bodyText: string, footnotes
     .map((n) => `\noindent\textbf{(${n.label})} [${n.lane}]: ${n.text}\\`)
     .join("\n");
 
-  return `% نشرة علمية محققة مصدرة من منصة المُحَرِّر لتحقيق المخطوطات (XeLaTeX + Reledmac/Polyglossia)
+  return String.raw`% نشرة علمية محققة مصدرة من منصة المُحَرِّر لتحقيق المخطوطات (XeLaTeX + Reledmac/Polyglossia)
 \documentclass[14pt,a4paper]{extarticle}
 \usepackage{fontspec}
 \usepackage{polyglossia}
