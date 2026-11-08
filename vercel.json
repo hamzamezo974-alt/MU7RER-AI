@@ -1,1 +1,1 @@
-{"installCommand": "npm install", "buildCommand": "npx vite build", "outputDirectory": "dist/client", "rewrites": [{"source": "/((?!assets/).*)", "destination": "/"}]}
+{"buildCommand": "npm run build", "outputDirectory": "dist/client", "rewrites": [{"source": "/((?!assets/|favicon.ico).*)", "destination": "/api/index"}]}
