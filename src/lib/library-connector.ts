@@ -1,37 +1,57 @@
-// محرك ربط وفهرسة الخزانات والمكتبات (بدون تسلسل أو إرهاق للذاكرة)
 export interface MountedLibrary {
   name: string;
   handle: FileSystemDirectoryHandle;
+  fileCount: number;
   connectedAt: number;
+  entries: { name: string; path: string; kind: string }[];
 }
 
 export async function mountLibraryFolder(): Promise<MountedLibrary | null> {
-  if (typeof window === 'undefined' || !('showDirectoryPicker' in window)) {
-    alert('متصفحك لا يدعم الربط المباشر. يرجى استخدام متصفح حديث ويدعم معايير الويب المتقدمة.');
+  if (typeof window === "undefined" || !("showDirectoryPicker" in window)) {
+    alert("متصفحك لا يدعم الربط الجذري للمجلدات. يرجى استخدام متصفح حديث مثل Chrome أو Edge.");
     return null;
   }
-
   try {
-    // فتح نافذة اختيار المجلد الجذري بضغطة واحدة ودون استعراض تسلسلي
-    const handle = await (window as any).showDirectoryPicker({
-      mode: 'read',
-      startIn: 'documents'
-    });
+    // يفتح نافذة اختيار المجلد الجذري (Select Folder) بضغطة واحدة دون فتح متسلسل
+    const handle = await (window as any).showDirectoryPicker({ mode: "read" });
+    const entries: { name: string; path: string; kind: string }[] = [];
+    
+    // مسح صامت وسريع للمستوى الأول والثاني فقط دون تحميل الملفات في الذاكرة
+    async function scanLight(dirHandle: any, prefix = "", depth = 0) {
+      if (depth > 2 || entries.length >= 500) return;
+      for await (const [name, entry] of dirHandle.entries()) {
+        const relPath = prefix ? prefix + "/" + name : name;
+        if (entry.kind === "file") {
+          if (/\.(db|sqlite|sqlite3|mdb|bok|pdf|json|txt)$/i.test(name)) {
+            entries.push({ name, path: relPath, kind: "file" });
+          }
+        } else if (entry.kind === "directory" && depth < 2) {
+          entries.push({ name, path: relPath, kind: "directory" });
+          await scanLight(entry, relPath, depth + 1);
+        }
+      }
+    }
+    await scanLight(handle);
 
     const mounted: MountedLibrary = {
       name: handle.name,
       handle,
-      connectedAt: Date.now()
+      fileCount: entries.length,
+      connectedAt: Date.now(),
+      entries
     };
-
-    // حفظ مرجع الربط في التخزين المحلي الآمن
-    // (سنعتمد على مقبض النظام المباشر في الجلسات القادمة)
-    console.log(`تم ربط المكتبة بنجاح: ${handle.name}`);
+    try {
+      localStorage.setItem("mu7rer_mounted_library", JSON.stringify({
+        name: mounted.name,
+        fileCount: mounted.fileCount,
+        connectedAt: mounted.connectedAt,
+        entries: mounted.entries.slice(0, 100)
+      }));
+      window.dispatchEvent(new CustomEvent("library-mounted", { detail: mounted }));
+    } catch (_) {}
     return mounted;
   } catch (err: any) {
-    if (err.name !== 'AbortError') {
-      console.error('تعذر إتمام ربط المجلد:', err);
-    }
+    if (err?.name !== "AbortError") console.error("خطأ في ربط المجلد:", err);
     return null;
   }
 }
