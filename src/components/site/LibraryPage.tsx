@@ -1,26 +1,18 @@
 import React, { useState, useEffect } from "react";
-import {
-  SAMPLE_SHOWCASE_BOOKS,
-  ShowcaseBook,
-  CriticalBlock,
-  EditorJumpContext
-} from "@/lib/islamic-library-engine";
+import { SAMPLE_SHOWCASE_BOOKS, ShowcaseBook, CriticalBlock, EditorJumpContext } from "@/lib/islamic-library-engine";
 import { mountLibraryFolder, MountedLibrary } from "@/lib/library-connector";
 
 export function LibraryPage() {
-  const [books, setBooks] = useState<ShowcaseBook[]>(SAMPLE_SHOWCASE_BOOKS);
+  const [books] = useState<ShowcaseBook[]>(SAMPLE_SHOWCASE_BOOKS);
   const [activeBook, setActiveBook] = useState<ShowcaseBook>(SAMPLE_SHOWCASE_BOOKS[0]);
   const [activeBlock, setActiveBlock] = useState<CriticalBlock>(SAMPLE_SHOWCASE_BOOKS[0].blocks[0]);
-  const [activeWitnessIdx, setActiveWitnessIdx] = useState<number>(0);
-  const [activeEditionIdx, setActiveEditionIdx] = useState<number>(0);
-  const [activeServiceTab, setActiveServiceTab] = useState<
-    "takhrij" | "isnad" | "unified" | "commentaries" | "gharib" | "topics"
-  >("takhrij");
-  const [takhrijLevel, setTakhrijLevel] = useState<"summary" | "medium" | "detailed">("detailed");
+  const [activeWitnessIdx, setActiveWitnessIdx] = useState(0);
+  const [activeEditionIdx, setActiveEditionIdx] = useState(0);
+  const [activeServiceTab, setActiveServiceTab] = useState<"takhrij"|"isnad"|"unified"|"commentaries"|"gharib"|"topics">("takhrij");
+  const [takhrijLevel, setTakhrijLevel] = useState<"summary"|"medium"|"detailed">("detailed");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "matn" | "service">("all");
+  const [filterType, setFilterType] = useState<"all"|"matn"|"service">("all");
   const [mountedLib, setMountedLib] = useState<MountedLibrary | null>(null);
-  const [authMessage, setAuthMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeBook.blocks.length > 0) {
@@ -30,13 +22,7 @@ export function LibraryPage() {
     }
   }, [activeBook]);
 
-  // التحقق من صلاحية الحساب والانتقال اللحظي للمحرر عند موضع المؤشر
   const handleJumpToEditor = (block: CriticalBlock) => {
-    const hasSession =
-      typeof window !== "undefined" &&
-      (localStorage.getItem("mu7rer_local_auth_session") ||
-        Object.keys(localStorage).some((k) => k.includes("supabase.auth.token")));
-
     const jumpContext: EditorJumpContext = {
       bookId: activeBook.id,
       bookTitle: activeBook.title,
@@ -49,480 +35,228 @@ export function LibraryPage() {
       selectedEditionId: block.editions[activeEditionIdx]?.id || "",
       timestamp: Date.now()
     };
-
     try {
       sessionStorage.setItem("mu7rer_editor_jump_context", JSON.stringify(jumpContext));
       localStorage.setItem("mu7rer_editor_jump_context", JSON.stringify(jumpContext));
+      if (!localStorage.getItem("mu7rer_local_auth_session")) {
+        localStorage.setItem("mu7rer_local_auth_session", JSON.stringify({
+          access_token: "local-token",
+          user: { id: "local-investigator", email: "investigator@mu7rer.local", name: "\u0627\u0644\u0628\u0627\u062d\u062b \u0627\u0644\u0645\u062d\u0642\u0642" }
+        }));
+      }
     } catch (_) {}
-
-    if (!hasSession) {
-      setAuthMessage(
-        "تم حفظ الموضع في الذاكرة (" +
-          block.chapter +
-          " - ص " +
-          block.page +
-          "). جاري تفعيل جلسة المحقق ونقلك مباشرة إلى نفس الموضع في المحرر..."
-      );
-      try {
-        localStorage.setItem(
-          "mu7rer_local_auth_session",
-          JSON.stringify({
-            access_token: "local-token",
-            user: { id: "local-investigator", email: "investigator@mu7rer.local", name: "الباحث المحقق" }
-          })
-        );
-      } catch (_) {}
-      setTimeout(() => {
-        window.location.href =
-          "/workspace?book=" +
-          encodeURIComponent(activeBook.id) +
-          "&block=" +
-          encodeURIComponent(block.id) +
-          "&page=" +
-          block.page;
-      }, 900);
-      return;
-    }
-
-    window.location.href =
-      "/workspace?book=" +
-      encodeURIComponent(activeBook.id) +
-      "&block=" +
-      encodeURIComponent(block.id) +
-      "&page=" +
-      block.page;
-  };
-
-  const handleMountLocal = async () => {
-    const res = await mountLibraryFolder();
-    if (res) {
-      setMountedLib(res);
-    }
+    window.location.href = "/workspace?book=" + encodeURIComponent(activeBook.id) + "&block=" + encodeURIComponent(block.id) + "&page=" + block.page;
   };
 
   const currentWitness = activeBlock?.witnesses[activeWitnessIdx] || activeBlock?.witnesses[0];
   const currentEdition = activeBlock?.editions[activeEditionIdx] || activeBlock?.editions[0];
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 md:p-6" dir="rtl">
-      {/* 1. ترويسة الخزانة الإسلامية (الواجهة والمدخل للمحرر) */}
-      <div className="max-w-[1600px] mx-auto mb-6 bg-card border rounded-2xl p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b pb-5">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-2">
-              <span>🏛️ خزانة مُحَرِّر الإسلامية التفاعلية</span>
-              <span>•</span>
-              <span>المدخل العلمي للمعاينة والتحقق والانتقال السياقي للمحرر</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              معرض الكتب المحققة والشبكة العلائقية للنسخ والطبعات
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              استعرض المتن المحقق مخدوماً بشبكة التخريج والأسانيد، وعاين على يمينه أصوله المخطوطة، وعلى يساره طبعاته السالفة، واضغط على أي موضع لفتحه فوراً في المحرر.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleMountLocal}
-              className="px-4 py-2.5 rounded-xl bg-secondary text-secondary-foreground text-sm font-bold hover:opacity-90 transition border"
-            >
-              {mountedLib ? "✅ الخزانة المربوطة: " + mountedLib.name : "🔗 ربط خزانة محلية (.db / .bok / .mdb)"}
-            </button>
-            <button
-              type="button"
-              onClick={() => activeBlock && handleJumpToEditor(activeBlock)}
-              className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition shadow-sm"
-            >
-              ✒️ فتح الموضع الحالي في المحرر
-            </button>
-          </div>
-        </div>
-
-        {/* شريط البحث الشامل وتصنيف (كتب المتون / الكتب الخدمية) */}
-        <div className="mt-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setFilterType("all")}
-              className={
-                "px-3 py-1.5 rounded-lg text-xs font-bold border " +
-                (filterType === "all" ? "bg-primary text-primary-foreground" : "bg-background")
-              }
-            >
-              كل الخزانة ({books.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType("matn")}
-              className={
-                "px-3 py-1.5 rounded-lg text-xs font-bold border " +
-                (filterType === "matn" ? "bg-primary text-primary-foreground" : "bg-background")
-              }
-            >
-              كتب المتون المحققة
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType("service")}
-              className={
-                "px-3 py-1.5 rounded-lg text-xs font-bold border " +
-                (filterType === "service" ? "bg-primary text-primary-foreground" : "bg-background")
-              }
-            >
-              الكتب الخدمية والشروح والعلل
-            </button>
-          </div>
-
-          <div className="flex-1 max-w-md">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث في المتون، الرواة، شجرة الموضوعات، أو غريب الحديث..."
-              className="w-full px-4 py-2 rounded-xl border bg-background text-sm"
-            />
-          </div>
-        </div>
-
-        {authMessage && (
-          <div className="mt-4 p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-bold">
-            {authMessage}
-          </div>
-        )}
-      </div>
-
-      {/* 2. العرض الثلاثي المتزامن (المخطوطات يميناً | المتن المخدوم وسطاً | الطبعات السالفة يساراً) */}
-      <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* الجناح الأيمن (3 أعمدة): معاين النسخ المخطوطة المتعددة */}
-        <div className="lg:col-span-3 bg-card border rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b pb-3 mb-3">
-            <div>
-              <h2 className="text-base font-extrabold">📜 النسخ المخطوطة المعتمدة</h2>
-              <p className="text-xs text-muted-foreground">عاين بنفسك صحة إجراءات التحقيق من الأصول</p>
-            </div>
-            <span className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
-              {activeBlock?.witnesses.length || 0} نسخ
-            </span>
-          </div>
-
-          {/* أزرار التبديل بين النسخ المخطوطة */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {activeBlock?.witnesses.map((w, idx) => (
-              <button
-                key={w.id}
-                type="button"
-                onClick={() => setActiveWitnessIdx(idx)}
-                className={
-                  "px-2.5 py-1 rounded-lg text-xs font-bold border transition " +
-                  (idx === activeWitnessIdx
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted/40 hover:bg-muted")
-                }
-              >
-                {w.siglum}
-              </button>
-            ))}
-          </div>
-
-          {currentWitness ? (
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-muted/50 border text-xs space-y-1">
-                <div className="font-bold text-foreground">{currentWitness.title}</div>
-                <div className="text-muted-foreground">المصدر: {currentWitness.origin}</div>
-                <div className="text-muted-foreground">تاريخ النسخ: {currentWitness.dateHijri}</div>
-                <div className="text-primary font-semibold">الموضع المتزامن: {currentWitness.folio}</div>
-              </div>
-
-              {/* محاكاة اللوحة المخطوطة المتزامنة مع السطر */}
-              <div className="p-4 rounded-xl bg-amber-950/10 dark:bg-amber-900/20 border-2 border-amber-700/30 font-serif leading-relaxed text-sm">
-                <div className="text-[11px] font-bold text-amber-800 dark:text-amber-400 mb-2 flex items-center justify-between">
-                  <span>قراءة السطر المقابل في المخطوط:</span>
-                  <span>مزامنة تلقائية ✓</span>
-                </div>
-                <p className="text-base leading-8 bg-amber-500/10 p-2.5 rounded-lg border border-amber-600/20">
-                  {currentWitness.linePreview}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">{currentWitness.notes}</p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">اختر فقرة لعرض نسخها المخطوطة المقابلة.</p>
-          )}
-        </div>
-
-        {/* القلب المركزي (6 أعمدة): المتن المحقق المخدوم + حاشية التحقيق + درج الخدمات الشبكية */}
-        <div className="lg:col-span-6 space-y-5">
-          <div className="bg-card border rounded-2xl p-6 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4 mb-4">
+    <div className="heritage-portal min-h-screen p-3 md:p-5" dir="rtl" style={{ backgroundColor: "#f3eedf", color: "#1e1a14" }}>
+      <div className="max-w-[1620px] mx-auto" style={{ border: "3px double #8c734b", backgroundColor: "#fbf8f1", boxShadow: "0 6px 24px rgba(40,30,15,0.12)" }}>
+        
+        {/* Top Royal Heritage Header */}
+        <div style={{ background: "linear-gradient(90deg, #163828 0%, #204d38 50%, #163828 100%)", color: "#f9f5eb", borderBottom: "3px solid #b68d40", padding: "14px 20px" }}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div style={{ width: "48px", height: "48px", border: "2px solid #d4af37", backgroundColor: "#112b1f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", color: "#e6c665", fontWeight: "bold" }}>۞</div>
               <div>
-                <h2 className="text-lg font-extrabold text-primary">{activeBook.title}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {activeBook.author} ({activeBook.deathHijri}) • وضع القراءة والتحقق العلمي (Read-Only)
-                </p>
+                <div style={{ color: "#e0c068", fontSize: "12px", fontWeight: 700 }}>
+                  {"\u062e\u0632\u0627\u0646\u0629 \u0645\u064f\u062d\u064e\u0631\u0650\u0651\u0631 \u0644\u0644\u062a\u0631\u0627\u062b \u0627\u0644\u0625\u0633\u0644\u0627\u0645\u064a \u0627\u0644\u0645\u062d\u0642\u0642 • \u0628\u0648\u0627\u0628\u0629 \u0627\u0644\u0639\u0631\u0636 \u0627\u0644\u0639\u0644\u0645\u064a \u0648\u0627\u0644\u0645\u0642\u0627\u0628\u0644\u0629"}
+                </div>
+                <h1 style={{ fontSize: "21px", fontWeight: 800, color: "#ffffff", margin: "2px 0" }}>
+                  {"\u0627\u0644\u062c\u0627\u0645\u0639 \u0627\u0644\u0645\u062d\u0642\u0642 \u0644\u0644\u0645\u062a\u0648\u0646 \u0648\u0627\u0644\u0643\u062a\u0628 \u0627\u0644\u062e\u062f\u0645\u064a\u0629 \u0648\u0645\u0639\u0627\u064a\u0646\u0629 \u0627\u0644\u0645\u062e\u0637\u0648\u0637\u0627\u062a \u0648\u0627\u0644\u0637\u0628\u0639\u0627\u062a"}
+                </h1>
               </div>
-              <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
-                مخدوم شبكياً • اضغط على أي فقرة للانتقال للمحرر
-              </span>
             </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button type="button" onClick={async () => { const r = await mountLibraryFolder(); if (r) setMountedLib(r); }} style={{ backgroundColor: "#2b5b44", color: "#fdf8ec", border: "1px solid #d4af37", padding: "8px 14px", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                {mountedLib ? "\u2713 \u0627\u0644\u062e\u0632\u0627\u0646\u0629: " + mountedLib.name : "\u0631\u0628\u0637 \u062e\u0632\u0627\u0646\u0629 \u0645\u062d\u0644\u064a\u0629 (.db / .bok)"}
+              </button>
+              <button type="button" onClick={() => activeBlock && handleJumpToEditor(activeBlock)} style={{ backgroundColor: "#b68d40", color: "#16120b", border: "1px solid #f3e0b5", padding: "8px 16px", fontSize: "13px", fontWeight: 800, cursor: "pointer" }}>
+                {"\u2712\ufe0f \u0641\u062a\u062d \u0627\u0644\u0645\u0648\u0636\u0639 \u0627\u0644\u062d\u0627\u0644\u064a \u0641\u064a \u0627\u0644\u0645\u062d\u0631\u0631"}
+              </button>
+            </div>
+          </div>
+        </div>
 
-            {/* فقرات المتن القابلة للنقر للانتقال إلى المحرر */}
-            <div className="space-y-4">
+        {/* Subbar Filters & Book Selector */}
+        <div style={{ backgroundColor: "#e8dfc8", borderBottom: "2px solid #a89267", padding: "10px 16px" }}>
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: "all", label: "\u062c\u0645\u064a\u0639 \u0627\u0644\u0645\u0635\u0646\u0641\u0627\u062a" },
+                { id: "matn", label: "\u0643\u062a\u0628 \u0627\u0644\u0645\u062a\u0648\u0646 \u0627\u0644\u0645\u0633\u0646\u062f\u0629" },
+                { id: "service", label: "\u0627\u0644\u0643\u062a\u0628 \u0627\u0644\u062e\u062f\u0645\u064a\u0629 \u0648\u0627\u0644\u0634\u0631\u0648\u062d" }
+              ].map((t) => (
+                <button key={t.id} type="button" onClick={() => setFilterType(t.id as any)} style={{ backgroundColor: filterType === t.id ? "#1b4332" : "#fbf8f1", color: filterType === t.id ? "#ffffff" : "#2c2416", border: "1px solid #8c734b", padding: "5px 12px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                  {t.label}
+                </button>
+              ))}
+              <select value={activeBook.id} onChange={(e) => { const f = books.find((b) => b.id === e.target.value); if (f) setActiveBook(f); }} style={{ backgroundColor: "#fffdf8", border: "1px solid #8c734b", padding: "5px 10px", fontSize: "13px", fontWeight: 700, color: "#1b4332" }}>
+                {books.map((b) => (<option key={b.id} value={b.id}>{b.title} — {b.author}</option>))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={"\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0645\u062a\u0648\u0646\u060c \u0627\u0644\u0631\u0648\u0627\u0629\u060c \u0634\u062c\u0631\u0629 \u0627\u0644\u0645\u0648\u0636\u0648\u0639\u0627\u062a..."} style={{ backgroundColor: "#fffdf8", border: "1px solid #8c734b", padding: "6px 12px", fontSize: "13px", minWidth: "260px", color: "#1e1a14" }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Framed 3-Column Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12" style={{ borderBottom: "2px solid #8c734b" }}>
+          
+          {/* Right Column: Manuscripts */}
+          <div className="lg:col-span-3" style={{ backgroundColor: "#f5efe0", borderLeft: "2px solid #9e875b" }}>
+            <div style={{ background: "linear-gradient(180deg, #4a3718 0%, #36270f 100%)", color: "#f9f3e3", borderBottom: "2px solid #b68d40", padding: "10px 14px", display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "14px" }}>
+              <span>{"\ud83d\udcdc \u0627\u0644\u0646\u0633\u062e \u0627\u0644\u0645\u062e\u0637\u0648\u0637\u0629 \u0627\u0644\u0645\u0639\u062a\u0645\u062f\u0629"}</span>
+              <span style={{ backgroundColor: "#b68d40", color: "#1a1409", padding: "2px 8px", fontSize: "11px" }}>{activeBlock?.witnesses.length || 0}</span>
+            </div>
+            <div className="p-3.5 space-y-3">
+              <div className="grid grid-cols-1 gap-1.5">
+                {activeBlock?.witnesses.map((w, idx) => (
+                  <button key={w.id} type="button" onClick={() => setActiveWitnessIdx(idx)} style={{ textAlign: "right", padding: "7px 10px", fontSize: "12px", fontWeight: 700, border: idx === activeWitnessIdx ? "2px solid #1b4332" : "1px solid #b8a477", backgroundColor: idx === activeWitnessIdx ? "#1b4332" : "#fbf8f1", color: idx === activeWitnessIdx ? "#ffffff" : "#2b2317", cursor: "pointer" }}>
+                    {"\u0631\u0645\u0632 \u0627\u0644\u0646\u0633\u062e\u0629: "}{w.siglum}
+                  </button>
+                ))}
+              </div>
+              {currentWitness && (
+                <>
+                  <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#fbf8f1", border: "1px solid #b8a477", fontSize: "12px" }}>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid #d8cbb0" }}><td style={{ padding: "6px 8px", fontWeight: 800, backgroundColor: "#ebe2cc", width: "34%" }}>{"\u0627\u0644\u0646\u0633\u062e\u0629"}</td><td style={{ padding: "6px 8px" }}>{currentWitness.title}</td></tr>
+                      <tr style={{ borderBottom: "1px solid #d8cbb0" }}><td style={{ padding: "6px 8px", fontWeight: 800, backgroundColor: "#ebe2cc" }}>{"\u0627\u0644\u0644\u0648\u062d\u0629"}</td><td style={{ padding: "6px 8px", color: "#1b4332", fontWeight: 700 }}>{currentWitness.folio}</td></tr>
+                      <tr><td style={{ padding: "6px 8px", fontWeight: 800, backgroundColor: "#ebe2cc" }}>{"\u0627\u0644\u062a\u0627\u0631\u064a\u062e"}</td><td style={{ padding: "6px 8px" }}>{currentWitness.dateHijri}</td></tr>
+                    </tbody>
+                  </table>
+                  <div style={{ backgroundColor: "#eadcc3", border: "2px solid #8c6d3b", padding: "12px" }}>
+                    <div style={{ borderBottom: "1px solid #a68b5b", paddingBottom: "4px", marginBottom: "8px", fontSize: "11px", fontWeight: 800, color: "#4a3512" }}>
+                      {"\u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0633\u0637\u0631 \u0627\u0644\u0645\u0642\u0627\u0628\u0644 \u0641\u064a \u0627\u0644\u0645\u062e\u0637\u0648\u0637:"}
+                    </div>
+                    <p className="heritage-matn" style={{ fontSize: "1.1rem", lineHeight: "2.0", backgroundColor: "#f4ead5", padding: "10px", border: "1px dashed #8c6d3b" }}>{currentWitness.linePreview}</p>
+                    <div style={{ marginTop: "8px", fontSize: "11px", color: "#4a3b22", fontWeight: 600 }}>{currentWitness.notes}</div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Center Column: Critical Matn & Relational Services */}
+          <div className="lg:col-span-6" style={{ backgroundColor: "#fffdf8" }}>
+            <div style={{ background: "linear-gradient(180deg, #1b4332 0%, #122e22 100%)", color: "#ffffff", borderBottom: "2px solid #b68d40", padding: "10px 16px", display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "14px" }}>
+              <span>{"\ud83d\udcd6 \u0627\u0644\u0645\u062a\u0646 \u0627\u0644\u0645\u062d\u0642\u0642 \u0627\u0644\u0645\u062e\u062f\u0648\u0645 — "}{activeBook.title}</span>
+              <span style={{ fontSize: "11px", color: "#e6c665" }}>{"\u0627\u0646\u0642\u0631 \u0639\u0644\u0649 \u0623\u064a \u0645\u0648\u0636\u0639 \u0644\u0644\u062a\u062d\u0631\u064a\u0631"}</span>
+            </div>
+            <div className="p-5 space-y-5">
               {activeBook.blocks.map((block) => {
                 const isSelected = block.id === activeBlock?.id;
                 return (
-                  <div
-                    key={block.id}
-                    onClick={() => setActiveBlock(block)}
-                    className={
-                      "group relative p-5 rounded-2xl border transition cursor-pointer " +
-                      (isSelected
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-border hover:border-primary/40 bg-background")
-                    }
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-2 text-xs text-muted-foreground">
-                      <span className="font-bold text-foreground">{block.chapter}</span>
-                      <span>
-                        (ج {block.volume} / ص {block.page} • فقرة #{block.seq})
-                      </span>
+                  <div key={block.id} onClick={() => setActiveBlock(block)} style={{ border: isSelected ? "2px solid #1b4332" : "1px solid #c5b38a", backgroundColor: isSelected ? "#fcf8ee" : "#ffffff", cursor: "pointer" }}>
+                    <div style={{ backgroundColor: isSelected ? "#e3d8be" : "#efe8d5", borderBottom: "1px solid #c5b38a", padding: "7px 14px", display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 800 }}>
+                      <span>{block.chapter}</span>
+                      <span style={{ color: "#1b4332" }}>{"[\u062c "}{block.volume}{" / \u0635 "}{block.page}{" • #"}{block.seq}{"]"}</span>
                     </div>
-
-                    <p className="text-lg md:text-xl leading-10 font-serif text-foreground select-text">
-                      {block.matnText}
-                    </p>
-
-                    {/* حاشية فروق النسخ والتحقيق أسفل المتن */}
-                    {block.apparatusFootnotes.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-dashed space-y-1">
-                        <div className="text-[11px] font-bold text-muted-foreground">
-                          حاشية التحقيق وفروق النسخ:
+                    <div style={{ padding: "16px 20px" }}>
+                      <p className="heritage-matn select-text" style={{ textAlign: "justify" }}>{block.matnText}</p>
+                      {block.apparatusFootnotes.length > 0 && (
+                        <div style={{ marginTop: "14px", borderTop: "2px solid #b8a477", backgroundColor: "#f8f3e6", padding: "10px 14px" }}>
+                          <div style={{ fontSize: "12px", fontWeight: 800, color: "#5c4318", marginBottom: "4px" }}>{"\u062d\u0627\u0634\u064a\u0629 \u0627\u0644\u062a\u062d\u0642\u064a\u0642 \u0648\u0641\u0631\u0648\u0642 \u0627\u0644\u0646\u0633\u062e:"}</div>
+                          {block.apparatusFootnotes.map((fn, i) => (<p key={i} style={{ fontSize: "13px", lineHeight: "1.8", color: "#33291a" }}>{fn}</p>))}
                         </div>
-                        {block.apparatusFootnotes.map((fn, i) => (
-                          <p key={i} className="text-xs text-muted-foreground leading-relaxed">
-                            {fn}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* زر الانتقال اللحظي للمحرر في نفس الموضع */}
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t">
-                      <span className="text-[11px] text-muted-foreground">
-                        الموضع مربوط بـ {block.witnesses.length} نسخ خطية و {block.editions.length} طبعات سالفة
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleJumpToEditor(block);
-                        }}
-                        className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition flex items-center gap-1.5 shadow-sm"
-                      >
-                        <span>✒️</span>
-                        <span>انتقل لهذا الموضع في المحرر للتعديل</span>
+                      )}
+                    </div>
+                    <div style={{ backgroundColor: "#f2ead7", borderTop: "1px solid #c5b38a", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#52432b" }}>{"\u0645\u0639\u0627\u064a\u0646\u0629 \u0645\u062a\u0632\u0627\u0645\u0646\u0629 \u0645\u0639 \u0627\u0644\u0645\u062e\u0637\u0648\u0637 \u0648\u0627\u0644\u0637\u0628\u0639\u0627\u062a"}</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); handleJumpToEditor(block); }} style={{ backgroundColor: "#1b4332", color: "#ffffff", border: "1px solid #0f291e", padding: "5px 14px", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                        {"\u2712\ufe0f \u062d\u0631\u0631 \u0647\u0630\u0627 \u0627\u0644\u0645\u0648\u0636\u0639 \u0641\u064a \u0627\u0644\u0645\u062d\u0631\u0631"}
                       </button>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          </div>
 
-          {/* درج الخدمات العلائقية والشبكية (على غرار جامع السنة والشاملة المتقدمة) */}
-          {activeBlock && (
-            <div className="bg-card border rounded-2xl p-5 shadow-sm">
-              <div className="flex flex-wrap items-center gap-2 border-b pb-3 mb-4">
-                {[
-                  { id: "takhrij", label: "🔍 التخريج (3 مستويات)" },
-                  { id: "isnad", label: "🔗 شجرة الإسناد والرواة" },
-                  { id: "unified", label: "📑 المتن المجمّع" },
-                  { id: "commentaries", label: "📚 الشروح والكتب الخدمية" },
-                  { id: "gharib", label: "📖 غريب المتن والمعاجم" },
-                  { id: "topics", label: "🌳 الربط الموضوعي والمخالف" }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveServiceTab(tab.id as any)}
-                    className={
-                      "px-3 py-1.5 rounded-xl text-xs font-bold transition " +
-                      (activeServiceTab === tab.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/50 hover:bg-muted text-foreground")
-                    }
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {activeServiceTab === "takhrij" && (
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground">مستوى عرض التخريج:</span>
-                    {(["summary", "medium", "detailed"] as const).map((lvl) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => setTakhrijLevel(lvl)}
-                        className={
-                          "px-2.5 py-1 rounded-lg text-xs font-bold border " +
-                          (takhrijLevel === lvl ? "bg-secondary border-primary" : "bg-background")
-                        }
-                      >
-                        {lvl === "summary"
-                          ? "1. إجمالي (جزء/صفحة)"
-                          : lvl === "medium"
-                          ? "2. متوسط (الأبواب والمدار)"
-                          : "3. تفصيلي (المتابعات والعلل)"}
+              {/* Relational Services Box */}
+              {activeBlock && (
+                <div style={{ border: "2px solid #8c734b", backgroundColor: "#fbf8f1" }}>
+                  <div style={{ backgroundColor: "#2c3e35", color: "#f9f5eb", borderBottom: "2px solid #b68d40", padding: "8px 14px", fontSize: "13px", fontWeight: 800 }}>
+                    {"\u062e\u0632\u0627\u0646\u0629 \u0627\u0644\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0639\u0644\u0645\u064a\u0629 \u0648\u0627\u0644\u0634\u0628\u0643\u0629 \u0627\u0644\u0639\u0644\u0627\u0626\u0642\u064a\u0629"}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", backgroundColor: "#e6dec8", borderBottom: "2px solid #8c734b" }}>
+                    {[
+                      { id: "takhrij", label: "\u0627\u0644\u062a\u062e\u0631\u064a\u062c (3 \u0645\u0633\u062a\u0648\u064a\u0627\u062a)" },
+                      { id: "isnad", label: "\u0627\u0644\u0625\u0633\u0646\u0627\u062f \u0648\u0627\u0644\u0631\u0648\u0627\u0629" },
+                      { id: "unified", label: "\u0627\u0644\u0645\u062a\u0646 \u0627\u0644\u0645\u062c\u0645\u0639" },
+                      { id: "commentaries", label: "\u0627\u0644\u0634\u0631\u0648\u062d" },
+                      { id: "gharib", label: "\u063a\u0631\u064a\u0628 \u0627\u0644\u0645\u062a\u0646" },
+                      { id: "topics", label: "\u0627\u0644\u0631\u0628\u0637 \u0627\u0644\u0645\u0648\u0636\u0648\u0639\u064a" }
+                    ].map((tab) => (
+                      <button key={tab.id} type="button" onClick={() => setActiveServiceTab(tab.id as any)} style={{ padding: "8px 12px", fontSize: "12px", fontWeight: 800, borderLeft: "1px solid #a89267", backgroundColor: activeServiceTab === tab.id ? "#1b4332" : "transparent", color: activeServiceTab === tab.id ? "#ffffff" : "#2c2212", cursor: "pointer" }}>
+                        {tab.label}
                       </button>
                     ))}
                   </div>
-                  <div className="p-4 rounded-xl bg-muted/40 border leading-relaxed">
-                    {activeBlock.takhrij[takhrijLevel]}
-                  </div>
-                </div>
-              )}
-
-              {activeServiceTab === "isnad" && (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    الحكم على الإسناد: {activeBlock.isnads.ruling}{" "}
-                    {activeBlock.isnads.illah ? " • تطبيقات العلل: " + activeBlock.isnads.illah : ""}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {activeBlock.isnads.chain.map((r, i) => (
-                      <div key={r.id} className="p-3 rounded-xl border bg-background text-xs space-y-1">
-                        <div className="font-extrabold text-primary">
-                          {i + 1}. {r.name} ({r.deathYear})
+                  <div style={{ padding: "14px", backgroundColor: "#fffdf8", fontSize: "13px", lineHeight: "1.9" }}>
+                    {activeServiceTab === "takhrij" && (
+                      <div>
+                        <div className="flex gap-2 mb-3">
+                          {(["summary","medium","detailed"] as const).map((lvl) => (
+                            <button key={lvl} type="button" onClick={() => setTakhrijLevel(lvl)} style={{ padding: "4px 10px", fontSize: "12px", fontWeight: 700, border: "1px solid #8c734b", backgroundColor: takhrijLevel === lvl ? "#5c4318" : "#f5efe0", color: takhrijLevel === lvl ? "#fff" : "#2c2212" }}>
+                              {lvl === "summary" ? "\u0625\u062c\u0645\u0627\u0644\u064a" : lvl === "medium" ? "\u0645\u062a\u0648\u0633\u0637" : "\u062a\u0641\u0635\u064a\u0644\u064a"}
+                            </button>
+                          ))}
                         </div>
-                        <div className="text-muted-foreground">الطبقة: {r.tabaqa}</div>
-                        <div className="font-semibold">الرتبة: {r.rank} — {r.jarhWaTadil}</div>
+                        <p>{activeBlock.takhrij[takhrijLevel]}</p>
                       </div>
-                    ))}
+                    )}
+                    {activeServiceTab === "isnad" && (
+                      <div className="space-y-2">
+                        <div style={{ padding: "6px 10px", backgroundColor: "#e8f0ec", border: "1px solid #1b4332", fontWeight: 800 }}>{activeBlock.isnads.ruling}</div>
+                        {activeBlock.isnads.chain.map((r, i) => (
+                          <div key={r.id} style={{ padding: "6px 10px", border: "1px solid #dcd0b8", backgroundColor: "#fbf8f1" }}>
+                            <strong>{i + 1}. {r.name} ({r.deathYear})</strong> — {r.tabaqa} — <span style={{ color: "#1b4332", fontWeight: 700 }}>{r.rank} ({r.jarhWaTadil})</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {activeServiceTab === "unified" && (<p className="heritage-matn">{activeBlock.unifiedMatn}</p>)}
+                    {activeServiceTab === "commentaries" && activeBlock.commentaries.map((c, i) => (<div key={i} style={{ marginBottom: "8px", padding: "8px", border: "1px solid #c5b38a", backgroundColor: "#f8f3e6" }}><strong>{c.book} ({c.author}):</strong> {c.excerpt}</div>))}
+                    {activeServiceTab === "gharib" && activeBlock.gharib.map((g, i) => (<div key={i} style={{ marginBottom: "6px" }}><strong>{g.term}:</strong> {g.meaning}</div>))}
+                    {activeServiceTab === "topics" && activeBlock.topics.map((t, i) => (<div key={i} style={{ marginBottom: "6px" }}><strong>{t.path}</strong> {t.contraryRef ? " — (" + t.contraryRef + ")" : ""}</div>))}
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
-              {activeServiceTab === "unified" && (
-                <div className="p-4 rounded-xl bg-muted/40 border text-base font-serif leading-9">
-                  <div className="text-xs font-bold text-primary mb-1">
-                    نص المتن المجمّع من مجموع طرق الرواية:
+          {/* Left Column: Previous Print Editions */}
+          <div className="lg:col-span-3" style={{ backgroundColor: "#f5efe0", borderRight: "2px solid #9e875b" }}>
+            <div style={{ background: "linear-gradient(180deg, #4a3718 0%, #36270f 100%)", color: "#f9f3e3", borderBottom: "2px solid #b68d40", padding: "10px 14px", display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "14px" }}>
+              <span>{"\ud83d\udda8\ufe0f \u0645\u0648\u0627\u0632\u0646 \u0627\u0644\u0637\u0628\u0639\u0627\u062a \u0627\u0644\u0633\u0627\u0644\u0641\u0629"}</span>
+              <span style={{ backgroundColor: "#b68d40", color: "#1a1409", padding: "2px 8px", fontSize: "11px" }}>{activeBlock?.editions.length || 0}</span>
+            </div>
+            <div className="p-3.5 space-y-3">
+              <div className="grid grid-cols-1 gap-1.5">
+                {activeBlock?.editions.map((ed, idx) => (
+                  <button key={ed.id} type="button" onClick={() => setActiveEditionIdx(idx)} style={{ textAlign: "right", padding: "7px 10px", fontSize: "12px", fontWeight: 700, border: idx === activeEditionIdx ? "2px solid #1b4332" : "1px solid #b8a477", backgroundColor: idx === activeEditionIdx ? "#1b4332" : "#fbf8f1", color: idx === activeEditionIdx ? "#ffffff" : "#2b2317", cursor: "pointer" }}>
+                    {ed.name} ({ed.year})
+                  </button>
+                ))}
+              </div>
+              {currentEdition && (
+                <>
+                  <div style={{ backgroundColor: "#fffdf8", border: "1px solid #b8a477", padding: "10px 12px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 800, color: "#5c4318", marginBottom: "6px" }}>{"\u0646\u0635 \u0627\u0644\u0645\u0648\u0636\u0639 \u0641\u064a \u0627\u0644\u0637\u0628\u0639\u0629 \u0627\u0644\u0633\u0627\u0644\u0641\u0629:"}</div>
+                    <p className="heritage-matn" style={{ fontSize: "1.08rem", lineHeight: "1.95" }}>{currentEdition.textVariant}</p>
                   </div>
-                  {activeBlock.unifiedMatn}
-                </div>
-              )}
-
-              {activeServiceTab === "commentaries" && (
-                <div className="space-y-2.5">
-                  {activeBlock.commentaries.map((c, i) => (
-                    <div key={i} className="p-3.5 rounded-xl border bg-muted/30 text-xs space-y-1">
-                      <div className="font-bold text-primary">
-                        {c.book} — {c.author}
-                      </div>
-                      <p className="leading-relaxed text-sm">{c.excerpt}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeServiceTab === "gharib" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeBlock.gharib.map((g, i) => (
-                    <div key={i} className="p-3 rounded-xl border bg-muted/30 text-xs">
-                      <span className="font-extrabold text-primary">{g.term}: </span>
-                      <span>{g.meaning}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeServiceTab === "topics" && (
-                <div className="space-y-2">
-                  {activeBlock.topics.map((t, i) => (
-                    <div key={i} className="p-3 rounded-xl border bg-muted/30 text-xs space-y-1">
-                      <div className="font-bold">🌳 مسار الشجرة الموضوعية: {t.path}</div>
-                      {t.contraryRef && (
-                        <div className="text-amber-700 dark:text-amber-400 font-semibold">
-                          ⚖️ الربط بالمخالف ومواضع الجمع: {t.contraryRef}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                  <div style={{ backgroundColor: "#e6f0eb", border: "2px solid #1b4332", padding: "10px 12px" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 800, color: "#1b4332", marginBottom: "5px" }}>{"\u2728 \u0645\u0627 \u0642\u062f\u0645\u062a\u0647 \u0627\u0644\u0637\u0628\u0639\u0629 \u0627\u0644\u062c\u062f\u064a\u062f\u0629:"}</div>
+                    <p style={{ fontSize: "12px", lineHeight: "1.8", color: "#132a1f", fontWeight: 600 }}>{currentEdition.newEditionAdvantage}</p>
+                  </div>
+                </>
               )}
             </div>
-          )}
-        </div>
-
-        {/* الجناح الأيسر (3 أعمدة): موازن الطبعات السالفة وبيان ما قدمته الطبعة الجديدة */}
-        <div className="lg:col-span-3 bg-card border rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b pb-3 mb-3">
-            <div>
-              <h2 className="text-base font-extrabold">🖨️ موازن الطبعات السالفة</h2>
-              <p className="text-xs text-muted-foreground">ما قدمته الطبعة الجديدة عن الطبعات السابقة</p>
-            </div>
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
-              {activeBlock?.editions.length || 0} طبعات
-            </span>
           </div>
 
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {activeBlock?.editions.map((ed, idx) => (
-              <button
-                key={ed.id}
-                type="button"
-                onClick={() => setActiveEditionIdx(idx)}
-                className={
-                  "px-2.5 py-1 rounded-lg text-xs font-bold border transition " +
-                  (idx === activeEditionIdx
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted/40 hover:bg-muted")
-                }
-              >
-                {ed.name}
-              </button>
-            ))}
-          </div>
-
-          {currentEdition ? (
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-muted/50 border text-xs space-y-1">
-                <div className="font-bold">{currentEdition.name}</div>
-                <div className="text-muted-foreground">
-                  الناشر: {currentEdition.publisher} ({currentEdition.year})
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl border bg-background text-xs space-y-1.5">
-                <div className="font-bold text-muted-foreground">نص الموضع في هذه الطبعة السالفة:</div>
-                <p className="text-sm font-serif leading-7">{currentEdition.textVariant}</p>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs space-y-1.5">
-                <div className="font-extrabold text-emerald-800 dark:text-emerald-300">
-                  ✨ ما قدمته طبعتنا الجديدة عن هذه الطبعة:
-                </div>
-                <p className="leading-relaxed text-emerald-950 dark:text-emerald-200">
-                  {currentEdition.newEditionAdvantage}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">اختر فقرة لمعاينة فروق طبعاتها.</p>
-          )}
-
-          {/* ملخص عام لمزايا الطبعة الجديدة للكتاب */}
-          <div className="mt-4 pt-3 border-t">
-            <div className="text-xs font-bold mb-2">📌 خلاصة منهج التحقيق في هذه الطبعة:</div>
-            <ul className="space-y-1.5 text-xs text-muted-foreground list-disc pr-4">
-              {activeBook.newEditionHighlights.map((h, i) => (
-                <li key={i}>{h}</li>
-              ))}
-            </ul>
-          </div>
         </div>
       </div>
     </div>

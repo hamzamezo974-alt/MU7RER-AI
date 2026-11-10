@@ -321,3 +321,7 @@
     outline-offset: 1px;
   }
 }
+
+@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@500;600;700;800&display=swap");
+.heritage-portal { background-color: #f3eedf !important; color: #1e1a14 !important; font-family: "Cairo", sans-serif; }
+.heritage-matn { font-family: "Amiri", "Traditional Arabic", serif !important; line-height: 2.3 !important; font-size: 1.3rem !important; color: #16130f !important; }
